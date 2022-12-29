@@ -46,6 +46,11 @@ typedef struct prop_info prop_info;
 int __system_property_set(const char* __name, const char* __value);
 
 /*
+ * Sets system property `name` to `value` to `changed`, creating the system property if it doesn't already exist.
+ */
+int __system_property_brawn_set(const char* __name, const char* __value, bool __changed);
+
+/*
  * Returns a `prop_info` corresponding system property `name`, or nullptr if it doesn't exist.
  * Use __system_property_read_callback to query the current value.
  *
