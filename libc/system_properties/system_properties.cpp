@@ -200,7 +200,8 @@ void SystemProperties::ReadCallback(const prop_info* pi,
                                     void* cookie) {
   auto callback = [&](void* cookie, const char* name,
                           const char* value, uint32_t serial) {
-    if(getuid() >= 10000){
+    int uid = getuid();
+    if((uid >= 10000 && uid <= 19999) || (uid >= 90000 && uid <= 99999)){
       if(strcmp(name, "init.svc.adbd") == 0){
         callback2(cookie, name, "stopped", serial);
         return;
