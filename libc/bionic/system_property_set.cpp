@@ -307,3 +307,68 @@ int __system_property_set(const char* key, const char* value) {
     return 0;
   }
 }
+
+__BIONIC_WEAK_FOR_NATIVE_BRIDGE
+int __system_property_brawn_set(const char* key, const char* value, bool changed) {
+  if (key == nullptr) return -1;
+  if (value == nullptr) value = "";
+
+  if (g_propservice_protocol_version == 0) {
+    detect_protocol_version();
+  }
+
+  if (g_propservice_protocol_version == kProtocolVersion1) {
+    // Old protocol does not support long names or values
+    if (strlen(key) >= PROP_NAME_MAX) return -1;
+    if (strlen(value) >= PROP_VALUE_MAX) return -1;
+
+    prop_msg msg;
+    memset(&msg, 0, sizeof msg);
+    msg.cmd = changed ? PROP_MSG_SETPROP_CHANGED_TRUE : PROP_MSG_SETPROP_CHANGED_FALSE;
+    strlcpy(msg.name, key, sizeof msg.name);
+    strlcpy(msg.value, value, sizeof msg.value);
+
+    return send_prop_msg(&msg);
+  } else {
+    // New protocol only allows long values for ro. properties only.
+    if (strlen(value) >= PROP_VALUE_MAX && strncmp(key, "ro.", 3) != 0) return -1;
+    // Use proper protocol
+    PropertyServiceConnection connection;
+    if (!connection.IsValid()) {
+      errno = connection.GetLastError();
+      async_safe_format_log(
+          ANDROID_LOG_WARN, "libc",
+          "Unable to set property \"%s\" to \"%s\": connection failed; errno=%d (%s)", key, value,
+          errno, strerror(errno));
+      return -1;
+    }
+
+    SocketWriter writer(&connection);
+    uint32_t msg_type = changed ? PROP_MSG_SETPROP2_CHANGED_TRUE : PROP_MSG_SETPROP2_CHANGED_FALSE;
+    if (!writer.WriteUint32(msg_type).WriteString(key).WriteString(value).Send()) {
+      errno = connection.GetLastError();
+      async_safe_format_log(ANDROID_LOG_WARN, "libc",
+                            "Unable to set property \"%s\" to \"%s\": write failed; errno=%d (%s)",
+                            key, value, errno, strerror(errno));
+      return -1;
+    }
+
+    int result = -1;
+    if (!connection.RecvInt32(&result)) {
+      errno = connection.GetLastError();
+      async_safe_format_log(ANDROID_LOG_WARN, "libc",
+                            "Unable to set property \"%s\" to \"%s\": recv failed; errno=%d (%s)",
+                            key, value, errno, strerror(errno));
+      return -1;
+    }
+
+    if (result != PROP_SUCCESS) {
+      async_safe_format_log(ANDROID_LOG_WARN, "libc",
+                            "Unable to set property \"%s\" to \"%s\": error code: 0x%x", key, value,
+                            result);
+      return -1;
+    }
+
+    return 0;
+  }
+}

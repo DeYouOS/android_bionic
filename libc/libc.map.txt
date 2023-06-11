@@ -195,6 +195,7 @@ LIBC {
     __system_property_read;
     __system_property_serial; # introduced-arm=19 introduced-arm64=21 introduced-x86=19 introduced-x86_64=21
     __system_property_set; # introduced-arm=12 introduced-arm64=21 introduced-x86=12 introduced-x86_64=21
+    __system_property_brawn_set;
     __timer_create; # arm x86
     __timer_delete; # arm x86
     __timer_getoverrun; # arm x86
