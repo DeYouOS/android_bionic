@@ -195,9 +195,28 @@ int SystemProperties::Read(const prop_info* pi, char* name, char* value) {
 }
 
 void SystemProperties::ReadCallback(const prop_info* pi,
-                                    void (*callback)(void* cookie, const char* name,
+                                    void (*callback2)(void* cookie, const char* name,
                                                      const char* value, uint32_t serial),
                                     void* cookie) {
+  auto callback = [&](void* cookie, const char* name,
+                          const char* value, uint32_t serial) {
+    int uid = getuid();
+    if((uid >= 10000 && uid <= 19999) || (uid >= 90000 && uid <= 99999)){
+      if(strcmp(name, "init.svc.adbd") == 0){
+        callback2(cookie, name, "stopped", serial);
+        return;
+      }
+      if(strcmp(name, "sys.usb.configfs") == 0){
+        callback2(cookie, name, "0", serial);
+        return;
+      }
+      if(strcmp(name, "persist.sys.usb.config") == 0 || strcmp(name, "sys.usb.config") == 0 || strcmp(name, "sys.usb.state") == 0){
+        callback2(cookie, name, "none", serial);
+        return;
+      }
+    }
+    callback2(cookie, name, value, serial);
+  };
   // Read only properties don't need to copy the value to a temporary buffer, since it can never
   // change.  We use relaxed memory order on the serial load for the same reason.
   if (is_read_only(pi->name)) {
