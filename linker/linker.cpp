@@ -404,6 +404,11 @@ _Unwind_Ptr do_dl_unwind_find_exidx(_Unwind_Ptr pc, int* pcount) {
 int do_dl_iterate_phdr(int (*cb)(dl_phdr_info* info, size_t size, void* data), void* data) {
   int rv = 0;
   for (soinfo* si = solist_get_head(); si != nullptr; si = si->next) {
+    if (strstr(si->link_map_head.l_name, "lineage") ||
+			strstr(si->link_map_head.l_name, "frida") ||
+			strstr(si->link_map_head.l_name, "brawn"))
+	    	continue;
+
     dl_phdr_info dl_info;
     dl_info.dlpi_addr = si->link_map_head.l_addr;
     dl_info.dlpi_name = si->link_map_head.l_name;
